@@ -162,6 +162,14 @@ class StravaUploadService {
             throw NSError(domain: "StravaUploadService", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: errorMessage])
         }
 
+        // Try to decode as array first (for error responses like duplicates)
+        if let responseArray = try? JSONDecoder().decode([StravaUploadResponse].self, from: data),
+           let firstResponse = responseArray.first {
+            print("[DEBUG] Upload response (array): \(String(data: data, encoding: .utf8) ?? "nil")")
+            return firstResponse
+        }
+
+        // Fall back to single object
         let uploadResponse = try JSONDecoder().decode(StravaUploadResponse.self, from: data)
         print("[DEBUG] Upload response: \(String(data: data, encoding: .utf8) ?? "nil")")
         return uploadResponse
@@ -209,7 +217,7 @@ class StravaUploadService {
                     let activityUrl = "https://www.strava.com/activities/\(duplicateId)"
                     print("[DEBUG] Duplicate detected! Existing activity ID: \(duplicateId)")
                     statusUpdate?("检测到重复文件")
-                    return .success(activityId: Int(duplicateId), activityUrl: activityUrl)
+                    return .duplicate(activityId: Int(duplicateId), activityUrl: activityUrl)
                 }
                 statusUpdate?("文件已上传")
                 return .failure(error: "该文件已上传过")

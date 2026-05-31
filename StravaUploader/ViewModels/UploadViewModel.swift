@@ -20,7 +20,6 @@ class UploadViewModel: ObservableObject {
     @Published var isLoggedIn: Bool = false
     @Published var athlete: Athlete?
     @Published var isLoggingIn: Bool = false
-    @Published var isInitialLoading: Bool = true
     @Published var loginError: String?
 
     let oauthService: StravaOAuthService
@@ -35,21 +34,6 @@ class UploadViewModel: ObservableObject {
             isLoggedIn = true
             Task {
                 await loadAthlete()
-            }
-        }
-
-        // Observe oauthService's initial loading state
-        Task {
-            while oauthService.isInitialLoading {
-                try? await Task.sleep(nanoseconds: 50_000_000)
-            }
-            // Ensure minimum display time for animation (500ms)
-            try? await Task.sleep(nanoseconds: 500_000_000)
-            await MainActor.run {
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    self.isInitialLoading = false
-                    self.isLoggedIn = self.oauthService.isLoggedIn
-                }
             }
         }
     }

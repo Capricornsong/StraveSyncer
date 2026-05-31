@@ -4,6 +4,7 @@ struct ContentView: View {
     @StateObject private var viewModel = UploadViewModel()
 
     private let stravaOrange = Color(red: 252/255, green: 76/255, blue: 2/255)
+    private let cardBackground = Color.white.opacity(0.1)
 
     var body: some View {
         NavigationStack {
@@ -19,15 +20,11 @@ struct ContentView: View {
                 )
                 .ignoresSafeArea()
 
-                if viewModel.isInitialLoading {
-                    InitialLoadingView(stravaOrange: stravaOrange)
-                        .transition(.opacity)
-                } else {
-                    mainContent
-                        .transition(.opacity)
-                }
+                mainContent
             }
         }
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.hidden, for: .navigationBar)
     }
 
     @ViewBuilder
@@ -35,10 +32,15 @@ struct ContentView: View {
         ScrollView {
             VStack(spacing: 24) {
                 HeaderView(stravaOrange: stravaOrange)
+                    .padding(.top, 20)
 
                 // Login / User Info Section
-                if viewModel.isLoggedIn, let athlete = viewModel.athlete {
-                    AthleteWelcomeCard(athlete: athlete, stravaOrange: stravaOrange)
+                if viewModel.isLoggedIn {
+                    if let athlete = viewModel.athlete {
+                        AthleteWelcomeCard(athlete: athlete, stravaOrange: stravaOrange)
+                    } else {
+                        LoginLoadingCard(stravaOrange: stravaOrange)
+                    }
                 } else {
                     LoginCard(
                         isLoading: viewModel.isLoggingIn,
@@ -106,77 +108,22 @@ struct ContentView: View {
             .animation(.easeInOut(duration: 0.3), value: viewModel.uploadResult != nil)
         }
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar {
             if viewModel.isLoggedIn, let athlete = viewModel.athlete {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        Button(role: .destructive) {
+                        Button {
                             viewModel.logout()
                         } label: {
                             Label("退出登录", systemImage: "rectangle.portrait.and.arrow.right")
                         }
                     } label: {
-                        HStack(spacing: 4) {
-                            AsyncImage(url: URL(string: athlete.profilePictureUrl ?? "")) { phase in
-                                switch phase {
-                                case .success(let image):
-                                    image
-                                        .resizable()
-                                        .scaledToFill()
-                                default:
-                                    Image(systemName: "person.circle.fill")
-                                        .resizable()
-                                }
-                            }
-                            .frame(width: 28, height: 28)
-                            .clipShape(Circle())
-
-                            Image(systemName: "chevron.down")
-                                .font(.caption2)
-                                .foregroundStyle(.white.opacity(0.7))
-                        }
+                        Image(systemName: "ellipsis.circle")
+                            .font(.system(size: 20))
+                            .foregroundStyle(.white)
                     }
-                    .foregroundStyle(.white)
                 }
-            }
-        }
-    }
-}
-
-struct InitialLoadingView: View {
-    let stravaOrange: Color
-    @State private var pulseScale: CGFloat = 1.0
-    @State private var iconRotation: Double = 0
-
-    var body: some View {
-        VStack(spacing: 24) {
-            ZStack {
-                Circle()
-                    .stroke(stravaOrange.opacity(0.2), lineWidth: 3)
-                    .frame(width: 80, height: 80)
-
-                Circle()
-                    .trim(from: 0, to: 0.3)
-                    .stroke(stravaOrange, style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                    .frame(width: 80, height: 80)
-                    .rotationEffect(.degrees(iconRotation))
-
-                Image(systemName: "arrow.up.circle.fill")
-                    .font(.system(size: 30))
-                    .foregroundStyle(stravaOrange)
-                    .scaleEffect(pulseScale)
-            }
-
-            Text("正在加载...")
-                .font(.headline)
-                .foregroundStyle(.white.opacity(0.8))
-        }
-        .onAppear {
-            withAnimation(.linear(duration: 1).repeatForever(autoreverses: false)) {
-                iconRotation = 360
-            }
-            withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
-                pulseScale = 1.1
             }
         }
     }
@@ -187,6 +134,8 @@ struct LoginCard: View {
     let error: String?
     let stravaOrange: Color
     let onLogin: () -> Void
+
+    private let cardBackground = Color.white.opacity(0.1)
 
     var body: some View {
         VStack(spacing: 16) {
@@ -232,13 +181,42 @@ struct LoginCard: View {
             .disabled(isLoading)
         }
         .padding(24)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .background(cardBackground, in: RoundedRectangle(cornerRadius: 20))
+    }
+}
+
+struct LoginLoadingCard: View {
+    let stravaOrange: Color
+
+    private let cardBackground = Color.white.opacity(0.1)
+
+    var body: some View {
+        HStack(spacing: 16) {
+            ProgressView()
+                .tint(stravaOrange)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("检测到用户信息")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+
+                Text("正在自动登陆...")
+                    .font(.caption)
+                    .foregroundStyle(Color.white.opacity(0.6))
+            }
+
+            Spacer()
+        }
+        .padding(20)
+        .background(cardBackground, in: RoundedRectangle(cornerRadius: 16))
     }
 }
 
 struct AthleteWelcomeCard: View {
     let athlete: Athlete
     let stravaOrange: Color
+
+    private let cardBackground = Color.white.opacity(0.1)
 
     var body: some View {
         HStack(spacing: 12) {
@@ -284,7 +262,7 @@ struct AthleteWelcomeCard: View {
                 .foregroundStyle(stravaOrange)
         }
         .padding()
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .background(cardBackground, in: RoundedRectangle(cornerRadius: 16))
         .transition(.opacity.combined(with: .scale))
     }
 }
@@ -357,6 +335,8 @@ struct UploadingView: View {
     let status: String
     @State private var rotation: Double = 0
 
+    private let cardBackground = Color.white.opacity(0.1)
+
     var body: some View {
         VStack(spacing: 20) {
             ZStack {
@@ -381,7 +361,7 @@ struct UploadingView: View {
                 .foregroundStyle(.white.opacity(0.7))
         }
         .padding(40)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .background(cardBackground, in: RoundedRectangle(cornerRadius: 20))
         .onAppear {
             withAnimation(.linear(duration: 1).repeatForever(autoreverses: false)) {
                 rotation = 360

@@ -32,7 +32,6 @@ struct StravaOAuthToken: Codable {
 class StravaOAuthService: NSObject, ObservableObject {
     @Published var isAuthenticated: Bool = false
     @Published var isLoading: Bool = false
-    @Published var isInitialLoading: Bool = true
     @Published var athlete: Athlete?
     @Published var error: String?
 
@@ -48,10 +47,16 @@ class StravaOAuthService: NSObject, ObservableObject {
     private var currentToken: StravaOAuthToken?
 
     private let userDefaultsTokenKey = "strava_oauth_token"
+    private let userDefaultsAthleteKey = "strava_cached_athlete"
+    private let userDefaultsAthleteTimestampKey = "strava_cached_athlete_timestamp"
+
+    // Cache expires after 24 hours
+    private let cacheExpirationInterval: TimeInterval = 24 * 60 * 60
 
     override init() {
         super.init()
         loadToken()
+        loadCachedAthlete()
     }
 
     // MARK: - Public Methods
@@ -105,6 +110,8 @@ class StravaOAuthService: NSObject, ObservableObject {
     func logout() {
         currentToken = nil
         UserDefaults.standard.removeObject(forKey: userDefaultsTokenKey)
+        UserDefaults.standard.removeObject(forKey: userDefaultsAthleteKey)
+        UserDefaults.standard.removeObject(forKey: userDefaultsAthleteTimestampKey)
         isAuthenticated = false
         athlete = nil
     }
@@ -123,6 +130,11 @@ class StravaOAuthService: NSObject, ObservableObject {
     }
 
     func loadAthlete() async {
+        // Check if cache is still valid
+        if isCacheValid() {
+            return
+        }
+
         do {
             let token = try await getValidAccessToken()
             let athleteData = try await fetchAthlete(accessToken: token)
@@ -130,14 +142,21 @@ class StravaOAuthService: NSObject, ObservableObject {
             await MainActor.run {
                 self.athlete = athleteData
                 self.isAuthenticated = true
+                self.saveCachedAthlete(athleteData)
             }
         } catch {
             await MainActor.run {
                 self.error = error.localizedDescription
-                self.athlete = nil
                 self.isAuthenticated = false
             }
         }
+    }
+
+    private func isCacheValid() -> Bool {
+        guard let timestamp = UserDefaults.standard.object(forKey: userDefaultsAthleteTimestampKey) as? Date else {
+            return false
+        }
+        return Date().timeIntervalSince(timestamp) < cacheExpirationInterval
     }
 
     // MARK: - Private Methods
@@ -324,7 +343,20 @@ class StravaOAuthService: NSObject, ObservableObject {
             currentToken = token
             isAuthenticated = !token.isExpired
         }
-        isInitialLoading = false
+    }
+
+    private func saveCachedAthlete(_ athlete: Athlete) {
+        if let data = try? JSONEncoder().encode(athlete) {
+            UserDefaults.standard.set(data, forKey: userDefaultsAthleteKey)
+            UserDefaults.standard.set(Date(), forKey: userDefaultsAthleteTimestampKey)
+        }
+    }
+
+    private func loadCachedAthlete() {
+        if let data = UserDefaults.standard.data(forKey: userDefaultsAthleteKey),
+           let cachedAthlete = try? JSONDecoder().decode(Athlete.self, from: data) {
+            athlete = cachedAthlete
+        }
     }
 }
 

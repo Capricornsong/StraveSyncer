@@ -10,6 +10,7 @@ struct FileSelectionView: View {
     @State private var showFilePicker = false
 
     private let stravaOrange = Color(red: 252/255, green: 76/255, blue: 2/255)
+    private let cardBackground = Color.white.opacity(0.1)
 
     var body: some View {
         VStack(spacing: 16) {
@@ -21,24 +22,24 @@ struct FileSelectionView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(hasFile ? "已选择文件" : "选择 FIT 文件")
                         .font(.headline)
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(.white)
 
                     if hasFile {
                         Text(fileName)
                             .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Color.white.opacity(0.6))
                             .lineLimit(1)
                     } else {
                         Text("点击下方按钮选择 .fit 文件")
                             .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Color.white.opacity(0.6))
                     }
                 }
 
                 Spacer()
             }
             .padding()
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+            .background(cardBackground, in: RoundedRectangle(cornerRadius: 16))
 
             if let info = fileInfo {
                 FitFileInfoView(info: info, stravaOrange: stravaOrange)
@@ -88,12 +89,12 @@ struct FitFileInfoView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("活动时间")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color.white.opacity(0.6))
 
                     Text("\(info.displayDate) \(info.recordTime)")
                         .font(.subheadline)
                         .fontWeight(.semibold)
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(.white)
                 }
 
                 Spacer()
@@ -116,12 +117,12 @@ struct FitFileInfoView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("设备信息")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color.white.opacity(0.6))
 
                     Text("\(info.deviceName) \(info.deviceModel)")
                         .font(.subheadline)
                         .fontWeight(.semibold)
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(.white)
                 }
 
                 Spacer()
@@ -131,7 +132,7 @@ struct FitFileInfoView: View {
         .background(
             ZStack {
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(.ultraThinMaterial)
+                    .fill(Color.white.opacity(0.1))
 
                 RoundedRectangle(cornerRadius: 16)
                     .stroke(
