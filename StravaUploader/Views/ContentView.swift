@@ -268,6 +268,7 @@ struct AthleteWelcomeCard: View {
             .padding()
             .background(cardBackground, in: RoundedRectangle(cornerRadius: 16))
         }
+        .buttonStyle(.plain)
         .transition(.opacity.combined(with: .scale))
     }
 }

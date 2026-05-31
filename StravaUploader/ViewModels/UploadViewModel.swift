@@ -54,20 +54,34 @@ class UploadViewModel: ObservableObject {
 
         oauthService.login()
 
-        // Observe OAuth service state changes
         Task {
-            // Wait for authentication to complete
+            // Wait for auth session to finish (user interaction)
             while oauthService.isLoading {
                 try? await Task.sleep(nanoseconds: 100_000_000)
             }
 
+            // If there's an error, stop here
+            if let error = oauthService.error {
+                await MainActor.run {
+                    self.isLoggingIn = false
+                    self.loginError = error
+                }
+                return
+            }
+
+            // Wait for token exchange and athlete loading to complete
+            while !oauthService.isLoggedIn || oauthService.athlete == nil {
+                if oauthService.error != nil { break }
+                try? await Task.sleep(nanoseconds: 100_000_000)
+            }
+
             await MainActor.run {
-                self.isLoggingIn = oauthService.isLoading
+                self.isLoggingIn = false
+                self.isLoggedIn = self.oauthService.isLoggedIn
+                self.athlete = self.oauthService.athlete
                 if let error = self.oauthService.error {
                     self.loginError = error
                 }
-                self.isLoggedIn = self.oauthService.isLoggedIn
-                self.athlete = self.oauthService.athlete
             }
         }
     }
