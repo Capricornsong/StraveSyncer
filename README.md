@@ -55,6 +55,9 @@ If the activity already exists on Strava, the app displays a notification banner
 - iOS 17.0 or later
 - A Strava account
 
+## TODO
+- Multilingual
+
 ## License
 
 MIT License
