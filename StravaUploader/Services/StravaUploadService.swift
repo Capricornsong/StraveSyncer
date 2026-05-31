@@ -19,14 +19,6 @@ struct StravaUploadResponse: Codable {
         case activityId = "activity_id"
     }
 
-    var isSuccess: Bool {
-        workflow == "new_activity" || activityId != nil
-    }
-
-    var isProcessing: Bool {
-        status != nil && activityId == nil && error == nil
-    }
-
     var isDuplicate: Bool {
         if let error = error {
             return error.lowercased().contains("duplicate")
@@ -66,7 +58,6 @@ class StravaUploadService {
         statusUpdate: ((String) -> Void)? = nil
     ) async throws -> UploadResult {
         let accessToken = try await oauthService.getValidAccessToken()
-        print("[DEBUG] Using access token: \(accessToken.prefix(20))...")
 
         // Step 1: Upload the file
         let uploadResponse = try await uploadFile(
@@ -83,7 +74,6 @@ class StravaUploadService {
             return .failure(error: "上传失败：未获得上传 ID")
         }
 
-        print("[DEBUG] Upload initiated, uploadId: \(uploadId), status: \(uploadResponse.status ?? "nil")")
 
         // Step 2: Poll for upload status
         return try await pollUploadStatus(uploadId: uploadId, accessToken: accessToken, statusUpdate: statusUpdate)
@@ -144,14 +134,12 @@ class StravaUploadService {
 
         request.httpBody = body
 
-        print("[DEBUG] Sending upload request to: \(uploadUrl)")
         let (data, response) = try await URLSession.shared.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw NSError(domain: "StravaUploadService", code: -1, userInfo: [NSLocalizedDescriptionKey: "无效的服务器响应"])
         }
 
-        print("[DEBUG] Upload response status code: \(httpResponse.statusCode)")
 
         if httpResponse.statusCode == 401 {
             throw StravaOAuthError.notAuthenticated
@@ -165,13 +153,11 @@ class StravaUploadService {
         // Try to decode as array first (for error responses like duplicates)
         if let responseArray = try? JSONDecoder().decode([StravaUploadResponse].self, from: data),
            let firstResponse = responseArray.first {
-            print("[DEBUG] Upload response (array): \(String(data: data, encoding: .utf8) ?? "nil")")
             return firstResponse
         }
 
         // Fall back to single object
         let uploadResponse = try JSONDecoder().decode(StravaUploadResponse.self, from: data)
-        print("[DEBUG] Upload response: \(String(data: data, encoding: .utf8) ?? "nil")")
         return uploadResponse
     }
 
@@ -186,7 +172,6 @@ class StravaUploadService {
 
         while pollCount < maxPolls {
             pollCount += 1
-            print("[DEBUG] Polling status, attempt \(pollCount)/\(maxPolls)")
 
             statusUpdate?("正在处理... (\(pollCount)s)")
 
@@ -203,11 +188,9 @@ class StravaUploadService {
             }
 
             let uploadResponse = try JSONDecoder().decode(StravaUploadResponse.self, from: data)
-            print("[DEBUG] Poll response: id=\(uploadResponse.id ?? 0), activity_id=\(uploadResponse.activityId ?? 0), error=\(uploadResponse.error ?? "nil"), status=\(uploadResponse.status ?? "nil")")
 
             if let activityId = uploadResponse.activityId {
                 let activityUrl = "https://www.strava.com/activities/\(activityId)"
-                print("[DEBUG] Upload complete! Activity ID: \(activityId)")
                 statusUpdate?("处理完成!")
                 return .success(activityId: Int(activityId), activityUrl: activityUrl)
             }
@@ -215,7 +198,6 @@ class StravaUploadService {
             if uploadResponse.isDuplicate {
                 if let duplicateId = uploadResponse.duplicateActivityId {
                     let activityUrl = "https://www.strava.com/activities/\(duplicateId)"
-                    print("[DEBUG] Duplicate detected! Existing activity ID: \(duplicateId)")
                     statusUpdate?("检测到重复文件")
                     return .duplicate(activityId: Int(duplicateId), activityUrl: activityUrl)
                 }

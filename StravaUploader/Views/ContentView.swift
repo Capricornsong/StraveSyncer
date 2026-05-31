@@ -4,7 +4,6 @@ struct ContentView: View {
     @StateObject private var viewModel = UploadViewModel()
 
     private let stravaOrange = Color(red: 252/255, green: 76/255, blue: 2/255)
-    private let cardBackground = Color.white.opacity(0.1)
 
     var body: some View {
         NavigationStack {
@@ -110,7 +109,7 @@ struct ContentView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar {
-            if viewModel.isLoggedIn, let athlete = viewModel.athlete {
+            if viewModel.isLoggedIn, viewModel.athlete != nil {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button {
@@ -219,50 +218,56 @@ struct AthleteWelcomeCard: View {
     private let cardBackground = Color.white.opacity(0.1)
 
     var body: some View {
-        HStack(spacing: 12) {
-            AsyncImage(url: URL(string: athlete.profilePictureUrl ?? "")) { phase in
-                switch phase {
-                case .success(let image):
-                    image
-                        .resizable()
-                        .scaledToFill()
-                case .failure, .empty:
-                    Image(systemName: "person.circle.fill")
-                        .resizable()
-                        .foregroundStyle(.white.opacity(0.6))
-                @unknown default:
-                    Image(systemName: "person.circle.fill")
-                        .resizable()
-                        .foregroundStyle(.white.opacity(0.6))
-                }
+        Button {
+            if let url = URL(string: "https://www.strava.com/athletes/\(athlete.id)") {
+                UIApplication.shared.open(url)
             }
-            .frame(width: 50, height: 50)
-            .clipShape(Circle())
+        } label: {
+            HStack(spacing: 12) {
+                AsyncImage(url: URL(string: athlete.profilePictureUrl ?? "")) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    case .failure, .empty:
+                        Image(systemName: "person.circle.fill")
+                            .resizable()
+                            .foregroundStyle(.white.opacity(0.6))
+                    @unknown default:
+                        Image(systemName: "person.circle.fill")
+                            .resizable()
+                            .foregroundStyle(.white.opacity(0.6))
+                    }
+                }
+                .frame(width: 50, height: 50)
+                .clipShape(Circle())
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text("已登录")
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.7))
-
-                Text(athlete.displayName)
-                    .font(.headline)
-                    .foregroundStyle(.white)
-
-                if let city = athlete.city, let country = athlete.country {
-                    Text("\(city), \(country)")
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("已登录")
                         .font(.caption)
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(.white.opacity(0.7))
+
+                    Text(athlete.displayName)
+                        .font(.headline)
+                        .foregroundStyle(.white)
+
+                    if let city = athlete.city, let country = athlete.country {
+                        Text("\(city), \(country)")
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.6))
+                    }
                 }
+
+                Spacer()
+
+                Image(systemName: "arrow.up.right")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.5))
             }
-
-            Spacer()
-
-            Image(systemName: "checkmark.seal.fill")
-                .font(.title2)
-                .foregroundStyle(stravaOrange)
+            .padding()
+            .background(cardBackground, in: RoundedRectangle(cornerRadius: 16))
         }
-        .padding()
-        .background(cardBackground, in: RoundedRectangle(cornerRadius: 16))
         .transition(.opacity.combined(with: .scale))
     }
 }
@@ -338,30 +343,34 @@ struct UploadingView: View {
     private let cardBackground = Color.white.opacity(0.1)
 
     var body: some View {
-        VStack(spacing: 20) {
+        HStack(spacing: 16) {
             ZStack {
                 Circle()
-                    .stroke(stravaOrange.opacity(0.3), lineWidth: 4)
-                    .frame(width: 80, height: 80)
+                    .stroke(stravaOrange.opacity(0.3), lineWidth: 3)
+                    .frame(width: 44, height: 44)
 
                 Circle()
                     .trim(from: 0, to: 0.3)
-                    .stroke(stravaOrange, style: StrokeStyle(lineWidth: 4, lineCap: .round))
-                    .frame(width: 80, height: 80)
+                    .stroke(stravaOrange, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                    .frame(width: 44, height: 44)
                     .rotationEffect(.degrees(rotation))
             }
 
-            Text(status.isEmpty ? "正在上传..." : status)
-                .font(.title3)
-                .fontWeight(.semibold)
-                .foregroundStyle(.white)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(status.isEmpty ? "正在上传..." : status)
+                    .font(.headline)
+                    .foregroundStyle(.white)
 
-            Text(status.isEmpty ? "请稍候" : "处理中...")
-                .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.7))
+                Text(status.isEmpty ? "请稍候" : "处理中...")
+                    .font(.caption)
+                    .foregroundStyle(Color.white.opacity(0.6))
+            }
+
+            Spacer()
         }
-        .padding(40)
-        .background(cardBackground, in: RoundedRectangle(cornerRadius: 20))
+        .padding(20)
+        .frame(maxWidth: .infinity)
+        .background(cardBackground, in: RoundedRectangle(cornerRadius: 16))
         .onAppear {
             withAnimation(.linear(duration: 1).repeatForever(autoreverses: false)) {
                 rotation = 360

@@ -178,10 +178,6 @@ class StravaOAuthService: NSObject, ObservableObject {
             return
         }
 
-        print("[DEBUG] Callback URL: \(callbackUrl)")
-
-        // Parse the authorization code from the callback URL
-        // For localhost redirect, the code is in the query string
         guard let components = URLComponents(url: callbackUrl, resolvingAgainstBaseURL: false),
               let code = components.queryItems?.first(where: { $0.name == "code" })?.value else {
             self.error = "无法解析授权码"
